@@ -1,0 +1,1 @@
+ALTER TABLE chat_settings ADD COLUMN admin_only INTEGER NOT NULL DEFAULT 0;
