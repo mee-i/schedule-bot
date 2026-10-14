@@ -53,7 +53,8 @@ wa-reminder-bot/
 │  │  ├─ migrations/           # Versioned migration scripts
 │  │  │  ├─ 001_init.sql       # Initial database schema
 │  │  │  ├─ 002_whatsapp_auth.sql # SQLite WhatsApp session auth table
-│  │  │  └─ 003_admin_only.sql # Admin-only group mode setting
+│  │  │  ├─ 003_admin_only.sql # Admin-only group mode setting
+│  │  │  └─ 004_separate_notifications.sql # Separate toggles & offsets for course, task, event
 │  │  └─ repositories/         # Domain repositories with prepared statements
 │  │     ├─ chat.repo.ts       # chat_settings repository
 │  │     ├─ event.repo.ts      # events repository with per-chat seq

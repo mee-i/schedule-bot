@@ -102,4 +102,74 @@ describe("/setnotification Command", () => {
     const settings = ctx.services.chat_service.get_settings("group1@g.us");
     expect(settings?.notify_enabled).toBe(0);
   });
+
+  it("manages category-specific notification toggles and offsets", async () => {
+    const ctx = setup_context({ is_admin: true });
+
+    // 1. Matkul toggle & offsets
+    ctx.args_text = "matkul off";
+    const reply_matkul_off = await setnotification_handler(ctx);
+    expect(reply_matkul_off).toContain("Jadwal Kuliah (Matkul)");
+    expect(reply_matkul_off).toContain("dinonaktifkan");
+
+    let settings = ctx.services.chat_service.get_settings("group1@g.us");
+    expect(settings?.notify_course).toBe(0);
+
+    ctx.args_text = "matkul offset 1h,30m,0m";
+    const reply_matkul_offset = await setnotification_handler(ctx);
+    expect(reply_matkul_offset).toContain("1 jam sebelum");
+    expect(reply_matkul_offset).toContain("30 menit sebelum");
+    expect(reply_matkul_offset).toContain("waktu kejadian tiba (0m)");
+
+    settings = ctx.services.chat_service.get_settings("group1@g.us");
+    expect(settings?.course_offsets).toBe("[60,30,0]");
+
+    // 2. Tugas toggle & offsets
+    ctx.args_text = "tugas off";
+    const reply_tugas_off = await setnotification_handler(ctx);
+    expect(reply_tugas_off).toContain("Tugas");
+    expect(reply_tugas_off).toContain("dinonaktifkan");
+
+    settings = ctx.services.chat_service.get_settings("group1@g.us");
+    expect(settings?.notify_task).toBe(0);
+
+    ctx.args_text = "tugas offset 1d,6h,3h,30m";
+    const reply_tugas_offset = await setnotification_handler(ctx);
+    expect(reply_tugas_offset).toContain("1 hari sebelum");
+    expect(reply_tugas_offset).toContain("6 jam sebelum");
+    expect(reply_tugas_offset).toContain("3 jam sebelum");
+    expect(reply_tugas_offset).toContain("30 menit sebelum");
+
+    settings = ctx.services.chat_service.get_settings("group1@g.us");
+    expect(settings?.task_offsets).toBe("[1440,360,180,30]");
+
+    // 3. Event toggle & offsets
+    ctx.args_text = "event off";
+    const reply_event_off = await setnotification_handler(ctx);
+    expect(reply_event_off).toContain("Agenda (Event)");
+    expect(reply_event_off).toContain("dinonaktifkan");
+
+    settings = ctx.services.chat_service.get_settings("group1@g.us");
+    expect(settings?.notify_event).toBe(0);
+
+    ctx.args_text = "event offset 2h,15m";
+    await setnotification_handler(ctx);
+    settings = ctx.services.chat_service.get_settings("group1@g.us");
+    expect(settings?.event_offsets).toBe("[120,15]");
+
+    // Re-enable matkul and check status breakdown
+    ctx.args_text = "matkul on";
+    await setnotification_handler(ctx);
+
+    ctx.args_text = "status";
+    const status_reply = await setnotification_handler(ctx);
+    expect(status_reply).toContain("Jadwal Kuliah (Matkul)");
+    expect(status_reply).toContain("Aktif ✅");
+    expect(status_reply).toContain("Nonaktif ❌"); // Tugas and event are off
+  });
+
+  it("rejects invalid actions for category subcommands", async () => {
+    const ctx = setup_context({ is_admin: true, args_text: "matkul foo" });
+    expect(setnotification_handler(ctx)).rejects.toThrow("Aksi untuk kategori *matkul* tidak valid");
+  });
 });

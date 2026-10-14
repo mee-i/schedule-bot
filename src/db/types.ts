@@ -2,6 +2,7 @@ export type ChatType = "group" | "private";
 export type MentionMode = "hidden" | "visible" | "none";
 export type TaskStatus = "open" | "done";
 export type SourceType = "event" | "course" | "task";
+export type NotificationCategory = "course" | "task" | "event";
 export type ReminderLogStatus = "sent" | "failed";
 
 export interface ChatSettings {
@@ -13,6 +14,12 @@ export interface ChatSettings {
   mention_mode: MentionMode;
   timezone: string;
   reminder_offsets: string; // JSON array of numbers: e.g. "[1440,180,30]"
+  notify_course: number; // 0 or 1
+  notify_task: number; // 0 or 1
+  notify_event: number; // 0 or 1
+  course_offsets: string; // JSON array: e.g. "[60,30,0]"
+  task_offsets: string; // JSON array: e.g. "[1440,360,180,30]"
+  event_offsets: string; // JSON array: e.g. "[1440,180,30]"
   digest_time: string | null;
   set_by: string | null;
   created_at: number;

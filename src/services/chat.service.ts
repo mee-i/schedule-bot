@@ -1,5 +1,9 @@
 import type { ChatRepository } from "@/db/repositories/chat.repo.ts";
-import type { ChatSettings, MentionMode } from "@/db/types.ts";
+import type {
+  ChatSettings,
+  MentionMode,
+  NotificationCategory,
+} from "@/db/types.ts";
 import type { Clock } from "@/lib/clock.ts";
 import { UserError } from "@/lib/errors.ts";
 import { DateTime } from "luxon";
@@ -78,6 +82,62 @@ export class ChatService {
     const json_str = JSON.stringify(offsets);
     const updated = this.chat_repo.update(chat_jid, {
       reminder_offsets: json_str,
+      course_offsets: json_str,
+      task_offsets: json_str,
+      event_offsets: json_str,
+      now_ms: this.clock.now(),
+    });
+    if (!updated) {
+      throw new UserError("Pengaturan chat belum ditemukan.");
+    }
+    return updated;
+  }
+
+  set_category_notification(
+    chat_jid: string,
+    category: NotificationCategory,
+    enabled: boolean,
+    chat_type: "group" | "private" = "group"
+  ): ChatSettings {
+    this.get_or_create(chat_jid, chat_type);
+    const col_map: Record<
+      NotificationCategory,
+      "notify_course" | "notify_task" | "notify_event"
+    > = {
+      course: "notify_course",
+      task: "notify_task",
+      event: "notify_event",
+    };
+    const col = col_map[category];
+    const updated = this.chat_repo.update(chat_jid, {
+      [col]: enabled ? 1 : 0,
+      now_ms: this.clock.now(),
+    });
+    if (!updated) {
+      throw new UserError("Pengaturan chat belum ditemukan.");
+    }
+    return updated;
+  }
+
+  set_category_offsets(
+    chat_jid: string,
+    category: NotificationCategory,
+    offsets: number[],
+    chat_type: "group" | "private" = "group"
+  ): ChatSettings {
+    this.get_or_create(chat_jid, chat_type);
+    const json_str = JSON.stringify(offsets);
+    const col_map: Record<
+      NotificationCategory,
+      "course_offsets" | "task_offsets" | "event_offsets"
+    > = {
+      course: "course_offsets",
+      task: "task_offsets",
+      event: "event_offsets",
+    };
+    const col = col_map[category];
+    const updated = this.chat_repo.update(chat_jid, {
+      [col]: json_str,
       now_ms: this.clock.now(),
     });
     if (!updated) {

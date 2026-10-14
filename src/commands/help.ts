@@ -63,11 +63,13 @@ export async function help_handler(ctx: CommandContext): Promise<string> {
     return (
       `🔔 *Panduan /setnotification*\n\n` +
       `Digunakan untuk mengatur notifikasi pengingat di chat ini.\n\n` +
-      `• \`/setnotification\` : Mengaktifkan notifikasi di chat ini\n` +
-      `• \`/setnotification off\` : Menonaktifkan notifikasi\n` +
-      `• \`/setnotification status\` : Melihat konfigurasi saat ini\n` +
+      `• \`/setnotification\` : Mengaktifkan master notifikasi di chat ini\n` +
+      `• \`/setnotification off\` : Menonaktifkan master notifikasi\n` +
+      `• \`/setnotification status\` : Melihat konfigurasi per kategori saat ini\n` +
+      `• \`/setnotification <matkul|tugas|event> <on|off>\` : Mengaktifkan/mematikan notifikasi kategori tertentu\n` +
+      `• \`/setnotification <matkul|tugas|event> offset <daftar>\` : Mengatur offset pengingat khusus kategori\n` +
       `• \`/setnotification mention <hidden|visible|none>\` : Mengatur gaya mention\n` +
-      `• \`/setnotification offset 1d,3h,30m\` : Mengatur jarak waktu pengingat\n` +
+      `• \`/setnotification offset 1d,3h,30m\` : Mengatur jarak waktu pengingat global\n` +
       `• \`/setnotification tz Asia/Jakarta\` : Mengubah zona waktu chat\n` +
       `• \`/setnotification test\` : Uji coba simulasi pengingat dalam 30 detik`
     );

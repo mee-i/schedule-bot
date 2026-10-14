@@ -32,83 +32,144 @@ export class ReminderEngine {
       return [];
     }
 
-    let offsets: number[] = [1440, 180, 30];
-    try {
-      offsets = JSON.parse(chat_settings.reminder_offsets);
-    } catch {
-      offsets = [1440, 180, 30];
-    }
-
-    if (offsets.length === 0) {
-      return [];
-    }
-
     const now_ms = this.clock.now();
     const grace_ms = this.grace_minutes * 60_000;
-    const max_offset = Math.max(...offsets);
-
     const from_ms = now_ms - grace_ms;
-    const to_ms = now_ms + max_offset * 60_000;
-
-    // 1. Fetch items
-    const events = this.event_repo.find_upcoming_occurrences(
-      chat_settings.chat_jid,
-      from_ms,
-      to_ms
-    );
-    const tasks = this.task_repo.find_open_occurrences(
-      chat_settings.chat_jid,
-      from_ms,
-      to_ms
-    );
-    const courses = this.course_repo.list_active_by_chat(
-      chat_settings.chat_jid
-    );
-
-    // 2. Expand occurrences
-    const event_occ = expand_event_occurrences(events, from_ms, to_ms);
-    const task_occ = expand_task_occurrences(tasks, from_ms, to_ms);
-    const course_occ = expand_course_occurrences(
-      courses,
-      chat_settings.timezone,
-      from_ms,
-      to_ms
-    );
-
-    const all_occurrences: ReminderOccurrence[] = [
-      ...event_occ,
-      ...task_occ,
-      ...course_occ,
-    ];
-
     const due_reminders: DueReminder[] = [];
 
-    // 3. Evaluate triggers
-    for (const occ of all_occurrences) {
-      for (const offset of offsets) {
-        const trigger_time = occ.occurrence_at - offset * 60_000;
-
-        const is_due =
-          trigger_time <= now_ms && trigger_time > now_ms - grace_ms;
-
-        if (!is_due) {
-          continue;
+    const parse_offsets = (
+      raw: string | undefined,
+      legacy_raw: string | undefined,
+      fallback: number[]
+    ): number[] => {
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        } catch {
+          // ignore
         }
+      }
+      if (legacy_raw) {
+        try {
+          const parsed = JSON.parse(legacy_raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      return fallback;
+    };
 
-        const already_sent = this.reminder_repo.is_already_logged(
-          occ.source_type,
-          occ.source_id,
-          occ.occurrence_at,
-          offset
+    const evaluate_triggers = (
+      occurrences: ReminderOccurrence[],
+      offsets: number[]
+    ): void => {
+      for (const occ of occurrences) {
+        for (const offset of offsets) {
+          const trigger_time = occ.occurrence_at - offset * 60_000;
+
+          const is_due =
+            trigger_time <= now_ms && trigger_time > now_ms - grace_ms;
+
+          if (!is_due) {
+            continue;
+          }
+
+          const already_sent = this.reminder_repo.is_already_logged(
+            occ.source_type,
+            occ.source_id,
+            occ.occurrence_at,
+            offset
+          );
+
+          if (!already_sent) {
+            due_reminders.push({
+              occurrence: occ,
+              offset_minutes: offset,
+              chat_settings,
+            });
+          }
+        }
+      }
+    };
+
+    // 1. Matkul (Course)
+    const course_enabled =
+      chat_settings.notify_course !== undefined
+        ? Boolean(chat_settings.notify_course)
+        : true;
+    if (course_enabled) {
+      const course_offsets = parse_offsets(
+        chat_settings.course_offsets,
+        chat_settings.reminder_offsets,
+        [60, 30, 0]
+      );
+      if (course_offsets.length > 0) {
+        const max_offset = Math.max(...course_offsets);
+        const to_ms = now_ms + max_offset * 60_000;
+        const courses = this.course_repo.list_active_by_chat(
+          chat_settings.chat_jid
         );
+        const course_occ = expand_course_occurrences(
+          courses,
+          chat_settings.timezone,
+          from_ms,
+          to_ms
+        );
+        evaluate_triggers(course_occ, course_offsets);
+      }
+    }
 
-        if (!already_sent) {
-          due_reminders.push({
-            occurrence: occ,
-            offset_minutes: offset,
-            chat_settings,
-          });
-        }
+    // 2. Tugas (Task)
+    const task_enabled =
+      chat_settings.notify_task !== undefined
+        ? Boolean(chat_settings.notify_task)
+        : true;
+    if (task_enabled) {
+      const task_offsets = parse_offsets(
+        chat_settings.task_offsets,
+        chat_settings.reminder_offsets,
+        [1440, 360, 180, 30]
+      );
+      if (task_offsets.length > 0) {
+        const max_offset = Math.max(...task_offsets);
+        const to_ms = now_ms + max_offset * 60_000;
+        const tasks = this.task_repo.find_open_occurrences(
+          chat_settings.chat_jid,
+          from_ms,
+          to_ms
+        );
+        const task_occ = expand_task_occurrences(tasks, from_ms, to_ms);
+        evaluate_triggers(task_occ, task_offsets);
+      }
+    }
+
+    // 3. Agenda / Event
+    const event_enabled =
+      chat_settings.notify_event !== undefined
+        ? Boolean(chat_settings.notify_event)
+        : true;
+    if (event_enabled) {
+      const event_offsets = parse_offsets(
+        chat_settings.event_offsets,
+        chat_settings.reminder_offsets,
+        [1440, 180, 30]
+      );
+      if (event_offsets.length > 0) {
+        const max_offset = Math.max(...event_offsets);
+        const to_ms = now_ms + max_offset * 60_000;
+        const events = this.event_repo.find_upcoming_occurrences(
+          chat_settings.chat_jid,
+          from_ms,
+          to_ms
+        );
+        const event_occ = expand_event_occurrences(events, from_ms, to_ms);
+        evaluate_triggers(event_occ, event_offsets);
       }
     }
 

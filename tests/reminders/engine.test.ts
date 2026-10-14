@@ -144,4 +144,69 @@ describe("Reminder Engine & Occurrences", () => {
     const due_expired = engine.find_due_reminders_for_chat(chat);
     expect(due_expired.length).toBe(0);
   });
+
+  it("evaluates category reminders independently based on individual toggles and offsets", () => {
+    const clock = new FakeClock(1_000_000);
+    const db = create_database(":memory:");
+    run_migrations(db);
+
+    const chat_repo = new ChatRepository(db);
+    const event_repo = new EventRepository(db);
+    const course_repo = new CourseRepository(db);
+    const task_repo = new TaskRepository(db);
+    const reminder_repo = new ReminderLogRepository(db);
+
+    // Chat with course active ([60, 30, 0]), task active ([360, 30]), event inactive (notify_event: 0)
+    const chat = chat_repo.upsert({
+      chat_jid: "chat@g.us",
+      chat_type: "group",
+      notify_enabled: 1,
+      notify_course: 1,
+      course_offsets: "[60, 30, 0]",
+      notify_task: 1,
+      task_offsets: "[360, 30]",
+      notify_event: 0,
+      event_offsets: "[1440, 180, 30]",
+    });
+
+    // 1. Task due at now + 360 mins (6 hours)
+    // trigger_time = 1_000_000 + 360 * 60_000 - 360 * 60_000 = 1_000_000 (NOW)
+    const due_at_task = clock.now() + 360 * 60_000;
+    task_repo.create({
+      chat_jid: "chat@g.us",
+      title: "Tugas Fisika",
+      due_at: due_at_task,
+      created_by: "user@s.whatsapp.net",
+      now_ms: clock.now(),
+    });
+
+    // 2. Event due at now + 180 mins (3 hours)
+    // Even though it's due, notify_event is 0 so it should NOT be triggered
+    event_repo.create({
+      chat_jid: "chat@g.us",
+      title: "Seminar",
+      start_at: clock.now() + 180 * 60_000,
+      created_by: "user@s.whatsapp.net",
+      now_ms: clock.now(),
+    });
+
+    const engine = new ReminderEngine(
+      event_repo,
+      course_repo,
+      task_repo,
+      reminder_repo,
+      clock,
+      15
+    );
+
+    const due_list = engine.find_due_reminders_for_chat(chat);
+    expect(due_list.length).toBe(1);
+    expect(due_list[0]?.occurrence.source_type).toBe("task");
+    expect(due_list[0]?.offset_minutes).toBe(360);
+
+    // Disable task notification as well
+    const updated_chat = chat_repo.update("chat@g.us", { notify_task: 0 })!;
+    const due_list_none = engine.find_due_reminders_for_chat(updated_chat);
+    expect(due_list_none.length).toBe(0);
+  });
 });
