@@ -73,6 +73,7 @@ wa-reminder-bot/
 │  └─ DECISIONS.md             # Architecture decisions record
 ├─ .env.example                # Template configuration
 ├─ bun.lock                    # Bun lockfile
+├─ ecosystem.config.cjs        # PM2 process configuration (fork mode, Bun runtime)
 ├─ package.json                # Project manifest and scripts
 ├─ tsconfig.json               # Strict TypeScript configuration
 ├─ AGENTS.md                   # Engineering contract and protocols

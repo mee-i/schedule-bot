@@ -8,7 +8,11 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop schedule-bot",
+    "pm2:restart": "pm2 restart schedule-bot",
+    "pm2:logs": "pm2 logs schedule-bot"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "7.0.0-rc14",

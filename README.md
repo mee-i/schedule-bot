@@ -126,6 +126,30 @@ docker logs -f wa-reminder-bot
 
 ---
 
+## Deployment Menggunakan PM2
+
+Aplikasi ini siap dijalankan sebagai background daemon di VPS / server menggunakan **PM2** dengan runtime Bun.
+
+> **Penting**: Gunakan mode `fork` dan `1 instance` (jangan gunakan mode cluster) untuk mencegah konflik sesi WhatsApp dan duplikasi pemicu pengingat.
+
+1. **Jalankan bot dengan PM2:**
+   ```bash
+   bun run pm2:start
+   # atau: pm2 start ecosystem.config.cjs
+   ```
+2. **Cek status & log:**
+   ```bash
+   pm2 status
+   bun run pm2:logs
+   ```
+3. **Restart / Stop:**
+   ```bash
+   bun run pm2:restart
+   bun run pm2:stop
+   ```
+
+---
+
 ## Daftar Perintah (Command Reference)
 
 Prefix default: `/`
